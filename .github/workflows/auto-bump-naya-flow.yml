@@ -1,0 +1,110 @@
+name: Auto-bump naya-flow
+
+on:
+  schedule:
+    - cron: "17 7 * * *"   # daily; tweak as you like
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    env:
+      CASK_PATH: Casks/naya-flow.rb
+      REPO_SLUG: NayaTech/NayaFlow-releases
+      ASSET_SUFFIX: arm64.dmg
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read current version from cask
+        id: current
+        run: |
+          set -euo pipefail
+          current="$(grep -Eo 'version "[^"]+"' "$CASK_PATH" | head -1 | cut -d'"' -f2)"
+          echo "current=$current" >> "$GITHUB_OUTPUT"
+          echo "Current cask version: $current"
+
+      - name: Fetch latest GitHub Release tag
+        id: latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          api="https://api.github.com/repos/${{ env.REPO_SLUG }}/releases/latest"
+          tag="$(curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" "$api" | jq -r '.tag_name')"
+          latest="${tag#v}"
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+          echo "Latest upstream version: $latest"
+
+      - name: Decide if bump is needed
+        id: gate
+        run: |
+          if [[ "${{ steps.latest.outputs.latest }}" == "${{ steps.current.outputs.current }}" || -z "${{ steps.latest.outputs.latest }}" ]]; then
+            echo "needs_bump=false" >> "$GITHUB_OUTPUT"
+            echo "No bump needed."
+          else
+            echo "needs_bump=true" >> "$GITHUB_OUTPUT"
+            echo "Bump needed."
+          fi
+
+      - name: Locate and download DMG asset
+        if: steps.gate.outputs.needs_bump == 'true'
+        id: dl
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          api="https://api.github.com/repos/${{ env.REPO_SLUG }}/releases/tags/v${{ steps.latest.outputs.latest }}"
+          url="$(curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" "$api" \
+                 | jq -r --arg ver "${{ steps.latest.outputs.latest }}" --arg suf "${{ env.ASSET_SUFFIX }}" '
+                      .assets[] | select(.name == ("NayaFlow-" + $ver + "-" + $suf)) | .browser_download_url
+                 ')"
+          if [[ -z "$url" ]]; then
+            echo "Asset not found by exact name, fallback to first arm64.dmg"
+            url="$(curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" "$api" \
+                   | jq -r '.assets[] | select(.name | test("arm64\\.dmg$")) | .browser_download_url' | head -1)"
+          fi
+          echo "download_url=$url" >> "$GITHUB_OUTPUT"
+          echo "Downloading: $url"
+          curl -fL "$url" -o "NayaFlow-${{ steps.latest.outputs.latest }}-arm64.dmg"
+          echo "file=NayaFlow-${{ steps.latest.outputs.latest }}-arm64.dmg" >> "$GITHUB_OUTPUT"
+
+      - name: Compute SHA256
+        if: steps.gate.outputs.needs_bump == 'true'
+        id: sha
+        run: |
+          set -euo pipefail
+          sum="$(sha256sum "${{ steps.dl.outputs.file }}" | awk '{print $1}')"
+          echo "sha256=$sum" >> "$GITHUB_OUTPUT"
+          echo "SHA256: $sum"
+
+      - name: Update cask file (version + sha256)
+        if: steps.gate.outputs.needs_bump == 'true'
+        run: |
+          set -euo pipefail
+          sed -i -E 's/^  version "[^"]+"/  version "${{ steps.latest.outputs.latest }}"/' "$CASK_PATH"
+          sed -i -E 's/^  sha256 "[0-9a-f]+"/  sha256 "${{ steps.sha.outputs.sha256 }}"/' "$CASK_PATH"
+
+          echo "Updated cask diff:"
+          git --no-pager diff -- "$CASK_PATH"
+
+      - name: Create PR
+        if: steps.gate.outputs.needs_bump == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "naya-flow: bump to ${{ steps.latest.outputs.latest }}"
+          title: "naya-flow ${{ steps.latest.outputs.latest }}"
+          body: |
+            Auto-bumped by Linux workflow.
+
+            - Version: `${{ steps.latest.outputs.latest }}`
+            - SHA256: `${{ steps.sha.outputs.sha256 }}`
+          branch: "bump/naya-flow-${{ steps.latest.outputs.latest }}"
+          delete-branch: true
+          labels: |
+            dependencies
+            homebrew
