@@ -99,7 +99,7 @@ jobs:
           commit-message: "naya-flow: bump to ${{ steps.latest.outputs.latest }}"
           title: "naya-flow ${{ steps.latest.outputs.latest }}"
           body: |
-            Auto-bumped by Linux workflow.
+            Auto-bumped by workflow.
 
             - Version: `${{ steps.latest.outputs.latest }}`
             - SHA256: `${{ steps.sha.outputs.sha256 }}`
