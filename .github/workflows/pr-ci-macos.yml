@@ -1,0 +1,22 @@
+name: PR CI (macOS install check)
+
+on:
+  pull_request:
+    paths:
+      - "Casks/naya-flow.rb"
+
+jobs:
+  install:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout tap
+        uses: actions/checkout@v4
+
+      - name: Ensure Homebrew
+        run: brew --version
+
+      - name: Local tap & install cask
+        run: |
+          brew tap "${GITHUB_REPOSITORY}" "$(pwd)"
+          brew install --cask naya-flow
+          brew uninstall --cask naya-flow
