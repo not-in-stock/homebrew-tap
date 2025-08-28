@@ -2,7 +2,7 @@ name: Auto-bump naya-flow
 
 on:
   schedule:
-    - cron: "17 7 * * *"   # daily; tweak as you like
+    - cron: "17 7 * * *"
   workflow_dispatch:
 
 permissions:
@@ -99,7 +99,7 @@ jobs:
           commit-message: "naya-flow: bump to ${{ steps.latest.outputs.latest }}"
           title: "naya-flow ${{ steps.latest.outputs.latest }}"
           body: |
-            Auto-bumped by Linux workflow.
+            Auto-bumped by workflow.
 
             - Version: `${{ steps.latest.outputs.latest }}`
             - SHA256: `${{ steps.sha.outputs.sha256 }}`
