@@ -3,8 +3,6 @@ name: PR CI (macOS install check)
 on:
   pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review]
-    paths:
-      - "Casks/naya-flow.rb"
 
 permissions:
   contents: read

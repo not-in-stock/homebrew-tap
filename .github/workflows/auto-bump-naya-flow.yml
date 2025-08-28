@@ -2,7 +2,7 @@ name: Auto-bump naya-flow
 
 on:
   schedule:
-    - cron: "17 7 * * *"   # daily; tweak as you like
+    - cron: "17 7 * * *"
   workflow_dispatch:
 
 permissions:
