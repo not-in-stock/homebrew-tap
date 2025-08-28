@@ -2,16 +2,25 @@ name: Auto-bump naya-flow
 
 on:
   schedule:
-    - cron: "17 7 * * *"   # daily; tweak as you like
+    - cron: "17 7 * * *"
   workflow_dispatch:
 
 permissions:
   contents: write
   pull-requests: write
 
+concurrency:
+  group: auto-bump-naya-flow
+  cancel-in-progress: true
+
 jobs:
   bump:
     runs-on: ubuntu-latest
+    outputs:
+      latest: ${{ steps.latest.outputs.latest }}
+      needs_bump: ${{ steps.gate.outputs.needs_bump }}
+      pr_number: ${{ steps.cpr.outputs.pull-request-number }}
+      pr_branch: bump/naya-flow-${{ steps.latest.outputs.latest }}
     env:
       CASK_PATH: Casks/naya-flow.rb
       REPO_SLUG: NayaTech/NayaFlow-releases
@@ -94,6 +103,7 @@ jobs:
 
       - name: Create PR
         if: steps.gate.outputs.needs_bump == 'true'
+        id: cpr
         uses: peter-evans/create-pull-request@v6
         with:
           commit-message: "naya-flow: bump to ${{ steps.latest.outputs.latest }}"
@@ -108,3 +118,28 @@ jobs:
           labels: |
             dependencies
             homebrew
+
+  macos-ci:
+    needs: bump
+    if: needs.bump.outputs.needs_bump == 'true' && needs.bump.outputs.pr_number != ''
+    runs-on: macos-latest
+    steps:
+      - name: Checkout base repo
+        uses: actions/checkout@v4
+
+      - name: Checkout PR branch contents
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.bump.outputs.pr_branch }}
+          path: pr
+          persist-credentials: false
+
+      - name: Ensure Homebrew
+        run: brew --version
+
+      - name: Tap & install from PR branch
+        working-directory: pr
+        run: |
+          brew tap "${GITHUB_REPOSITORY}" "$(pwd)"
+          brew install --cask naya-flow
+          brew uninstall --cask naya-flow
