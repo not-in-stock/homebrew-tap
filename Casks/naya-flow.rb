@@ -1,6 +1,6 @@
 cask "naya-flow" do
-  version "1.6.10"
-  sha256 "1a894eeb268888fa26fde31038d1e6838623b5a41a6aa62bcee7dc44d49ac456"
+  version "1.11.10"
+  sha256 "7b409572ba4679f39eba076aa073712e763da6bbaee6b70b9664c9a8fb860813"
 
   url "https://github.com/NayaTech/NayaFlow-releases/releases/download/v#{version}/NayaFlow-#{version}-arm64.dmg",
       verified: "github.com/NayaTech/NayaFlow-releases/"
