@@ -2,7 +2,7 @@ cask "naya-flow" do
   version "1.14.5"
   sha256 "799b2c9c627cd8df4f567566b3a7c78c97d891e7f34f0b338752d7de2ced454d"
 
-  url "https://github.com/NayaTech/NayaFlow-releases/releases/download/v#{version}/NayaFlow-#{version}-arm64.dmg",
+  url "https://github.com/NayaTech/NayaFlow-releases/releases/download/v#{version}/NayaFlow-arm64.dmg",
       verified: "github.com/NayaTech/NayaFlow-releases/"
   name "NayaFlow"
   desc "Keyboard companion app by NayaTech"
