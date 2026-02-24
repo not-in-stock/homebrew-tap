@@ -1,0 +1,67 @@
+name: Auto-bump kanata-bar
+
+on:
+  repository_dispatch:
+    types: [bump-kanata-bar]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to bump to (without v prefix)"
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    env:
+      CASK_PATH: Casks/kanata-bar.rb
+      REPO_SLUG: not-in-stock/kanata-bar
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: version
+        run: |
+          version="${{ github.event.client_payload.version || github.event.inputs.version }}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Version: $version"
+
+      - name: Download asset
+        run: |
+          url="https://github.com/${{ env.REPO_SLUG }}/releases/download/v${{ steps.version.outputs.version }}/kanata-bar.app.zip"
+          echo "Downloading: $url"
+          curl -fL "$url" -o kanata-bar.app.zip
+
+      - name: Compute SHA256
+        id: sha
+        run: |
+          sum="$(sha256sum kanata-bar.app.zip | awk '{print $1}')"
+          echo "sha256=$sum" >> "$GITHUB_OUTPUT"
+          echo "SHA256: $sum"
+
+      - name: Update cask file
+        run: |
+          sed -i -E 's/^  version "[^"]+"/  version "${{ steps.version.outputs.version }}"/' "$CASK_PATH"
+          sed -i -E 's/^  sha256 "[^"]+"/  sha256 "${{ steps.sha.outputs.sha256 }}"/' "$CASK_PATH"
+          echo "Updated cask diff:"
+          git --no-pager diff -- "$CASK_PATH"
+
+      - name: Create PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "kanata-bar: bump to ${{ steps.version.outputs.version }}"
+          title: "kanata-bar ${{ steps.version.outputs.version }}"
+          body: |
+            Auto-bumped by workflow.
+
+            - Version: `${{ steps.version.outputs.version }}`
+            - SHA256: `${{ steps.sha.outputs.sha256 }}`
+          branch: "bump/kanata-bar-${{ steps.version.outputs.version }}"
+          delete-branch: true
+          labels: |
+            dependencies
+            homebrew

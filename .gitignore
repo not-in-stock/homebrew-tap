@@ -1,3 +1,4 @@
 *.dmg
 *.pkg
-*.zipe
+*.zip
+.DS_Store
