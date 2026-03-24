@@ -1,6 +1,6 @@
 cask "kanata-bar" do
-  version "1.1.7"
-  sha256 "3acf5d31f86ae4932018d30f7a9710348bb30aa3e6931f3978c17509eb1bd46b"
+  version "1.1.8"
+  sha256 "484c2c0dc958fdf1e5c0f1f5a1697b9c0304b42776d1e645d9d82745b5e8104b"
 
   url "https://github.com/not-in-stock/kanata-bar/releases/download/v#{version}/kanata-bar.app.zip"
   name "Kanata Bar"
